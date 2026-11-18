@@ -12,7 +12,7 @@ let root, server, base, token;
 before(async () => {
   root = shopApp();
   scanAndBuild(root);
-  execFileSync(process.execPath, [path.join(REPO, 'skills', 'floorplan', 'scripts', 'directory.mjs'), root], { stdio: 'pipe' });
+  execFileSync(process.execPath, [path.join(REPO, 'skills', 'floorplan', 'scripts', 'directory.mjs'), root, '--build-only'], { stdio: 'pipe' });
   const port = 20000 + Math.floor(Math.random() * 20000);
   // no Claude Code or Codex CLI and no waitlist card: this only exercises the server itself
   server = spawn(process.execPath, [path.join(root, 'floorplan', 'serve.mjs'), '--port', String(port), '--no-open'], {

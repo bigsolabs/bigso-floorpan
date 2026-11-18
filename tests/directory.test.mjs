@@ -19,8 +19,8 @@ const map = (root, project, name, { files = 4, nodes = 2 } = {}) => {
   });
   fs.writeFileSync(path.join(dir, 'index.html'), '<!doctype html><title>map</title>');
   fs.writeFileSync(path.join(dir, 'serve.mjs'), `
-    import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
-    const dir=path.dirname(new URL(import.meta.url).pathname); const server=http.createServer((q,s)=>{if(q.url==='/api/status'){s.writeHead(200,{'content-type':'application/json'});return s.end('{"ok":true}')}s.writeHead(200,{'content-type':'text/html'});s.end('<!doctype html><html><head></head><body><script>fetch("/api/status")</script></body></html>')});
+    import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+    const dir=path.dirname(fileURLToPath(import.meta.url)); const server=http.createServer((q,s)=>{if(q.url==='/api/status'){s.writeHead(200,{'content-type':'application/json'});return s.end('{"ok":true}')}s.writeHead(200,{'content-type':'text/html'});s.end('<!doctype html><html><head></head><body><script>fetch("/api/status")</script></body></html>')});
     server.listen(0,'127.0.0.1',()=>{const a=server.address();fs.mkdirSync(path.join(dir,'.cache'),{recursive:true});fs.writeFileSync(path.join(dir,'.cache/server.json'),JSON.stringify({pid:process.pid,url:'http://127.0.0.1:'+a.port,port:a.port,token:'test'}))});
   `);
 };
@@ -76,8 +76,8 @@ test('directory launch without a path reuses the nearest saved active workspace'
       ],
     });
     const result = JSON.parse(execFileSync(process.execPath, [script, '--build-only', '--json'], { cwd: commandDir, encoding: 'utf8' }));
-    assert.equal(result.root, workspace);
-    assert.equal(result.output, fs.realpathSync(output));
+    assert.equal(path.normalize(result.root), path.normalize(workspace));
+    assert.equal(path.normalize(result.output), path.normalize(fs.realpathSync(output)));
     assert.equal(result.maps, 1);
     assert.equal(readJson(path.join(output, 'directory.json')).maps[0].name, 'Saved active workspace');
   } finally { cleanup(sandbox); }
@@ -235,7 +235,13 @@ test('launcher root, settings, static routes, map proxy, and server controls wor
     assert.equal(data.workspaces.length,1);
     assert.equal(data.root,third);
   } finally {
-    if (child?.pid) child.kill('SIGTERM');
+    if (child?.pid && child.exitCode === null) {
+      await new Promise((resolve) => {
+        child.once('exit', resolve);
+        child.kill('SIGTERM');
+        setTimeout(resolve, 5000).unref();
+      });
+    }
     cleanup(root);cleanup(other);cleanup(third);
   }
 });
